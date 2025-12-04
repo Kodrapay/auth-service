@@ -41,6 +41,8 @@ func (s *AuthService) Login(_ context.Context, req dto.LoginRequest) dto.LoginRe
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		ExpiresIn:    exp,
+		MerchantID:   user.MerchantID,
+		Role:         user.Role,
 	}
 }
 

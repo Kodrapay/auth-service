@@ -6,9 +6,11 @@ type LoginRequest struct {
 }
 
 type LoginResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int64  `json:"expires_in"`
+	AccessToken  string  `json:"access_token"`
+	RefreshToken string  `json:"refresh_token"`
+	ExpiresIn    int64   `json:"expires_in"`
+	MerchantID   *string `json:"merchant_id,omitempty"`
+	Role         string  `json:"role,omitempty"`
 }
 
 type RegisterRequest struct {
