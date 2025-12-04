@@ -4,6 +4,8 @@ import (
 	"log"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/kodra-pay/auth-service/internal/config"
 	"github.com/kodra-pay/auth-service/internal/middleware"
 	"github.com/kodra-pay/auth-service/internal/routes"
@@ -13,6 +15,16 @@ func main() {
 	cfg := config.Load("auth-service", "7001")
 
 	app := fiber.New()
+	app.Use(recover.New())
+	app.Use(logger.New())
+
+	// Minimal CORS (gateway already handles CORS)
+	// app.Use(cors.New(cors.Config{
+	// 	AllowOrigins: "*",
+	// 	AllowHeaders: "*",
+	// 	AllowMethods: "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+	// }))
+
 	app.Use(middleware.RequestID())
 
 	routes.Register(app, cfg.ServiceName)
