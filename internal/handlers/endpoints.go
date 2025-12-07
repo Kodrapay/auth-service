@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"encoding/json"
+
 	"github.com/gofiber/fiber/v2"
 
 	"github.com/kodra-pay/auth-service/internal/config"
@@ -20,6 +22,9 @@ func NewAuthHandler(cfg config.Config, svc *services.AuthService) *AuthHandler {
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	var req dto.LoginRequest
 	if err := c.BodyParser(&req); err != nil {
+		// Fallback: try to decode raw JSON to give clearer errors
+		var raw map[string]interface{}
+		_ = json.Unmarshal(c.Body(), &raw)
 		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
 	}
 	resp, err := h.svc.Login(c.Context(), req)
@@ -32,6 +37,8 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 func (h *AuthHandler) Register(c *fiber.Ctx) error {
 	var req dto.RegisterRequest
 	if err := c.BodyParser(&req); err != nil {
+		var raw map[string]interface{}
+		_ = json.Unmarshal(c.Body(), &raw)
 		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
 	}
 	resp, err := h.svc.Register(c.Context(), req)
