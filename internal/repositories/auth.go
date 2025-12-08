@@ -36,9 +36,11 @@ func (r *AuthRepository) GetUserByEmail(ctx context.Context, email string) (*mod
 		WHERE email = $1
 	`
 	var u models.User
+	var merchantID sql.NullInt32 // To handle nullable int for MerchantID
+
 	err := r.db.QueryRowContext(ctx, query, email).Scan(
-		&u.ID,
-		&u.MerchantID,
+		&u.ID, // This should be int based on model change
+		&merchantID, // Scan into sql.NullInt32
 		&u.Email,
 		&u.PasswordHash,
 		&u.Role,
@@ -53,23 +55,32 @@ func (r *AuthRepository) GetUserByEmail(ctx context.Context, email string) (*mod
 	if err != nil {
 		return nil, err
 	}
+
+	// Handle nullable merchantID
+	if merchantID.Valid {
+		val := int(merchantID.Int32)
+		u.MerchantID = &val
+	} else {
+		u.MerchantID = nil
+	}
+
 	return &u, nil
 }
 
-func (r *AuthRepository) CreateUser(ctx context.Context, email, passwordHash, role string, merchantID *string) (string, error) {
+func (r *AuthRepository) CreateUser(ctx context.Context, email, passwordHash, role string, merchantID *int) (int, error) { // merchantID *int, return int
 	query := `
-		INSERT INTO users (id, merchant_id, email, password_hash, role, is_active)
-		VALUES (uuid_generate_v4(), $1, $2, $3, $4, TRUE)
+		INSERT INTO users (merchant_id, email, password_hash, role, is_active)
+		VALUES ($1, $2, $3, $4, TRUE)
 		RETURNING id
 	`
-	var id string
+	var id int // id is int
 	if err := r.db.QueryRowContext(ctx, query, merchantID, email, passwordHash, role).Scan(&id); err != nil {
-		return "", err
+		return 0, err
 	}
 	return id, nil
 }
 
-func (r *AuthRepository) UpdateLastLogin(ctx context.Context, userID string) error {
+func (r *AuthRepository) UpdateLastLogin(ctx context.Context, userID int) error { // userID changed to int
 	_, err := r.db.ExecContext(ctx, `UPDATE users SET last_login = NOW(), updated_at = NOW() WHERE id = $1`, userID)
 	return err
 }

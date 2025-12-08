@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"log" // Added for error logging in Refresh
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -56,15 +58,15 @@ func (s *AuthService) Login(_ context.Context, req dto.LoginRequest) (dto.LoginR
 	sessionID := ""
 	if s.sessionMgr != nil {
 		sessionID = generateSessionID()
-		merchantID := ""
+		merchantID := 0 // Now an int
 		if user.MerchantID != nil {
 			merchantID = *user.MerchantID
 		}
 
 		sessionData := session.SessionData{
-			UserID:     user.ID,
+			UserID:     user.ID, // int
 			Role:       user.Role,
-			MerchantID: merchantID,
+			MerchantID: merchantID, // int
 			Email:      req.Email,
 		}
 		_ = s.sessionMgr.CreateSession(ctx, sessionID, sessionData)
@@ -74,7 +76,7 @@ func (s *AuthService) Login(_ context.Context, req dto.LoginRequest) (dto.LoginR
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		ExpiresIn:    exp,
-		MerchantID:   user.MerchantID,
+		MerchantID:   user.MerchantID, // *int
 		Role:         user.Role,
 		SessionID:    sessionID,
 		Email:        req.Email,
@@ -93,22 +95,22 @@ func (s *AuthService) Register(_ context.Context, req dto.RegisterRequest) (dto.
 	}
 
 	hashed, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	userID, err := s.repo.CreateUser(ctx, req.Email, string(hashed), "merchant", req.MerchantID)
+	userID, err := s.repo.CreateUser(ctx, req.Email, string(hashed), "merchant", req.MerchantID) // req.MerchantID is *int, userID is int
 	if err != nil {
 		return dto.RegisterResponse{}, err
 	}
-	accessToken, refreshToken, _ := s.generateTokens(userID, "merchant")
+	accessToken, refreshToken, _ := s.generateTokens(userID, "merchant") // userID is int
 	return dto.RegisterResponse{
-		UserID:       userID,
+		UserID:       userID, // int
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-		MerchantID:   deref(req.MerchantID),
+		MerchantID:   derefInt(req.MerchantID), // new derefInt function
 	}, nil
 }
 
-func deref(p *string) string {
+func derefInt(p *int) int { // New helper for *int
 	if p == nil {
-		return ""
+		return 0
 	}
 	return *p
 }
@@ -124,9 +126,14 @@ func (s *AuthService) Refresh(_ context.Context, req dto.RefreshRequest) dto.Ref
 	if !ok {
 		return dto.RefreshResponse{}
 	}
-	sub, _ := claims["sub"].(string)
+	subStr, _ := claims["sub"].(string) // sub is string from JWT claims
+	sub, err := strconv.Atoi(subStr) // Convert to int
+	if err != nil {
+		log.Printf("ERROR: Refresh - failed to convert sub to int: %v", err)
+		return dto.RefreshResponse{}
+	}
 	role, _ := claims["role"].(string)
-	accessToken, refreshToken, exp := s.generateTokens(sub, role)
+	accessToken, refreshToken, exp := s.generateTokens(sub, role) // sub is int
 	return dto.RefreshResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -134,22 +141,22 @@ func (s *AuthService) Refresh(_ context.Context, req dto.RefreshRequest) dto.Ref
 	}
 }
 
-func (s *AuthService) Logout(ctx context.Context, sessionID string) map[string]string {
+func (s *AuthService) Logout(ctx context.Context, sessionID string) map[string]interface{} { // Return type changed
 	if s.sessionMgr != nil && sessionID != "" {
 		_ = s.sessionMgr.DeleteSession(ctx, sessionID)
 	}
-	return map[string]string{"status": "logged_out"}
+	return map[string]interface{}{"status": "logged_out"}
 }
 
-func (s *AuthService) generateTokens(userID, role string) (string, string, int64) {
+func (s *AuthService) generateTokens(userID int, role string) (string, string, int64) { // userID changed to int
 	exp := time.Now().Add(time.Hour).Unix()
 	access := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub":  userID,
+		"sub":  userID, // int
 		"role": role,
 		"exp":  exp,
 	})
 	refresh := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub":  userID,
+		"sub":  userID, // int
 		"role": role,
 		"exp":  time.Now().Add(24 * time.Hour).Unix(),
 		"type": "refresh",
@@ -177,9 +184,9 @@ func (s *AuthService) ValidateSession(ctx context.Context, req dto.ValidateSessi
 
 	return dto.ValidateSessionResponse{
 		Valid:      true,
-		UserID:     data.UserID,
+		UserID:     data.UserID, // int
 		Role:       data.Role,
-		MerchantID: data.MerchantID,
+		MerchantID: data.MerchantID, // int
 		Email:      data.Email,
 	}, nil
 }

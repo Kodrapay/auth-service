@@ -3,8 +3,8 @@ package models
 import "time"
 
 type User struct {
-	ID        string
-	MerchantID *string
+	ID        int
+	MerchantID *int
 	Email     string
 	PasswordHash string
 	Role      string

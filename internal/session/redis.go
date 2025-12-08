@@ -10,9 +10,9 @@ import (
 )
 
 type SessionData struct {
-	UserID     string `json:"user_id"`
+	UserID     int    `json:"user_id"`
 	Role       string `json:"role"`
-	MerchantID string `json:"merchant_id,omitempty"`
+	MerchantID int    `json:"merchant_id,omitempty"`
 	Email      string `json:"email"`
 	CreatedAt  int64  `json:"created_at"`
 	ExpiresAt  int64  `json:"expires_at"`
